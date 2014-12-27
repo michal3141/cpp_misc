@@ -23,7 +23,7 @@ struct Point {
     Point(double x, double y): x(x), y(y) {}
     Point(): Point(0, 0) {}
 
-    friend ostream& operator<<(ostream &os, const Point &p);
+    friend ostream &operator<<(ostream &os, const Point &p);
 };
 
 bool operator==(const Point &self, const Point &other) {
@@ -81,7 +81,7 @@ ostream &operator<<(ostream &os, const Segment &s) {
 bool operator==(const Segment &self, const Segment &other) {
     Point diff(self.p2 - self.p1);
     double val1 = self.p1.y + (curr_x - self.p1.x) * diff.y / diff.x;
-    diff = (other.p2 - other.p1);
+    diff = other.p2 - other.p1;
     double val2 = other.p1.y + (curr_x - other.p1.x) * diff.y / diff.x;
     if (abs(val1 - val2) < eps)  return true;
     return false;  
@@ -97,33 +97,21 @@ bool operator<(const Segment &self, const Segment &other) {
     return false;
 }
 
-/*bool operator>(const Segment &self, const Segment &other) {
-    Point diff(self.p2 - self.p1);
-    double val1 = self.p1.y + (curr_x - self.p1.x) * diff.y / diff.x;
-    diff = other.p2 - other.p1;
-    double val2 = other.p1.y + (curr_x - other.p1.x) * diff.y / diff.x;
-    if (val1 > val2) return true;
-    if (val1 < val2) return false;
-    return false;
-}*/
-
 map<pair<Point, Point>, double> keydict;
 set<pair<double, double>> already_enqued;
 map<pair<double, double>, pair<Segment, Segment>> intersection_segment_map;
 
-double ccw(const Point &A, const Point &B, const Point &C) {
-    return (C.y - A.y)*(B.x - A.x) > (B.y - A.y)*(C.x - A.x);
-}
-
 bool intersect(const Segment *s1, const Segment *s2) {
     if (s1 == nullptr || s2 == nullptr) {
-        cout << "s1||s2 is null in intersect" << endl;
         return false;
     }
     const Point &A = s1->p1;
     const Point &B = s1->p2;
     const Point &C = s2->p1;
     const Point &D = s2->p2;
+    auto ccw = [](const Point &A, const Point &B, const Point &C) {
+        return (C.y - A.y)*(B.x - A.x) > (B.y - A.y)*(C.x - A.x);
+    };
     return ccw(A, C, D) != ccw(B, C, D) && ccw(A, B, C) != ccw(A, B, D);
 } 
 
@@ -135,7 +123,8 @@ void debug_sweep_line(map<Segment, Segment> &SL) {
     }
     for (auto it = l.rbegin(); it != l.rend(); ++it) {
         Segment s = *it;
-        cout << s.p1.x << " " << s.p1.y << " " << s.p2.x << " " << s.p2.y << " " << s.ind << endl;
+        cout << s.p1.x << " " << s.p1.y << " " << s.p2.x << " " << s.p2.y 
+             << " " << s.ind << endl;
     }
     cout << "---------------------" << endl;
 }
@@ -145,7 +134,6 @@ const Segment *succ(map<Segment, Segment> &SL, Segment &s) {
     --e;
     auto it = SL.find(s);
     if (it->first == e->first) {
-        cout << "null in succ" << endl;
         return nullptr;
     }
     ++it;
@@ -156,7 +144,6 @@ const Segment *pred(map<Segment, Segment> &SL, Segment &s) {
     auto b = SL.begin();
     auto it = SL.find(s);
     if (it->first == b->first) {
-        cout << "null in pred" << endl;
         return nullptr;
     }
     --it;
@@ -172,52 +159,31 @@ void handle_intersect_event(const Segment *s1, const Segment *s2,
                             priority_queue<Point, vector<Point>, greater<Point>> &EQ) {
     double temp = curr_x;
     if (s1 == nullptr || s2 == nullptr) {
-        cout << "DUPA BLADA!" << endl;
+        return;
     }
-    Segment segg1 = const_cast<Segment&>(*s1);
-    Segment seg1 = segg1;
-    Segment segg2 = const_cast<Segment&>(*s2);
-    Segment seg2 = segg2;
-    cout << "seg1 " << seg1;
-    curr_x = keydict[make_pair(seg1.p1, seg1.p2)];
-    //curr_x = seg1.p1.x;
-    cout << "curr_x " << curr_x << endl;
-    cout << "SL.size " << SL.size() << endl;
-    //debug_sweep_line(SL);
-    //SL.erase(seg1);
+    Segment seg1 = const_cast<Segment&>(*s1);
+    Segment seg2 = const_cast<Segment&>(*s2);
+    auto seg1_pair = make_pair(seg1.p1, seg1.p2);
+    auto seg2_pair = make_pair(seg2.p1, seg2.p2);
+    curr_x = keydict[seg1_pair];
     auto it = SL.find(seg1);
     if (it == SL.end()) {
-        cout << "HELL YEAH!" << endl;
         curr_x = temp;
         auto it2 = SL.find(seg1);
         if (it2 == SL.end()) {
-            cout << "HELL YEAH 2!" << endl;
         } else {
             SL.erase(it2);
-            //debug_sweep_line(SL);
         }
     } else {
         SL.erase(it);
     }
-    //auto removed_cnt = SL.erase(seg1);
-    //cout << "# of elements removed " << removed_cnt << endl;
-    cout << "SL.size " << SL.size() << endl;
-    curr_x = keydict[make_pair(seg2.p1, seg2.p2)];
-    //curr_x = seg2.p1.x;
-    cout << "curr_x " << curr_x << endl;
+    curr_x = keydict[seg2_pair];
     SL.erase(seg2);
-    cout << "SL.size " << SL.size() << endl;
-    // It's cheating here - really ...
     curr_x = temp + 0.001;
-    cout << "curr_x " << curr_x << endl;
     SL.emplace(seg1, seg1);
-    cout << "SL.size " << SL.size() << endl;
-    cout << "keydict::curr_x " << curr_x << seg1;
-    keydict[make_pair(seg1.p1, seg1.p2)] = curr_x;
+    keydict[seg1_pair] = curr_x;
     SL.emplace(seg2, seg2);
-    cout << "SL.size " << SL.size() << endl;
-    cout << "keydict::curr_x " << curr_x << seg2;
-    keydict[make_pair(seg2.p1, seg2.p2)] = curr_x;
+    keydict[seg2_pair] = curr_x;
     Segment mini, maxi;
     if (seg1 < seg2) {
         mini = seg1;
@@ -235,7 +201,6 @@ void handle_intersect_event(const Segment *s1, const Segment *s2,
         handle_intersect(above_maxi, &maxi, SL, p_s, EQ);
     }
     curr_x = temp;
-    cout << "curr_x " << curr_x << endl;
 }
 
 void handle_intersect(const Segment *s1, const Segment *s2,
@@ -256,15 +221,11 @@ void handle_intersect(const Segment *s1, const Segment *s2,
     Point point(X, Y);
     auto p = make_pair(X, Y);
     if (already_enqued.find(p) == already_enqued.end()) {
-        cout << "handle_intersect::not_already_enqued " << point << endl;
         already_enqued.insert(p);
         auto sp = make_pair(*s1, *s2);
         intersection_segment_map.emplace(p, sp);
-
         point._s1 = new Segment(*const_cast<Segment*>(s1));
-        cout << "handle_intersect::s1 " << *point._s1;
         point._s2 = new Segment(*const_cast<Segment*>(s2));
-        cout << "handle_intersect::s2 " << *point._s2;
         point._orient = "intersect";
         EQ.push(point);
     }
@@ -288,71 +249,38 @@ bool shamos_hoey(vector<Segment> &segments, double lag=0.01) {
     bool destroy = false;
     while (EQ.size() > 0) {
         Point E = EQ.top();
-        cout << "EQ::point " << E << endl;
-        //cout << "Point: " << endl;
-        //cout << E.x << ", " << E.y << endl;
         string orient = E._orient;
         if (orient == "left") {
-            cout << "left" << endl;
-            /*for (auto &e: p_s) {
-                cout << e.first.x << " " << e.first.y << " -> " << e.second.p1.x << " " << e.second.p1.y <<  " " << e.second.p2.x << " " << e.second.p2.y << " " << e.second.ind << endl;
-            }*/
             Segment segE = p_s[E];
-            //cout << "Taking from p_s:" << endl;
-            //cout << segE.p1.x << " " << segE.p1.y << " " << segE.ind << endl;
             curr_x = segE.p1.x;
-            cout << "curr_x " << curr_x << endl;
             SL.emplace(segE, segE);
-            cout << "keydict::curr_x " << curr_x << segE;
             keydict[make_pair(segE.p1, segE.p2)] = curr_x;
-            debug_sweep_line(SL);
             const Segment *segA = succ(SL, segE);
             const Segment *segB = pred(SL, segE);
             if (intersect(&segE, segA)) {
-                cout << "intersectA" << endl;
                 handle_intersect(&segE, segA, SL, p_s, EQ);
                 if (destroy) return true;
             }
             if (intersect(&segE, segB)) {
-                cout << "intersectB" << endl;
                 handle_intersect(&segE, segB, SL, p_s, EQ);
                 if (destroy) return true;
             }
         } else if (orient == "right") {
-            cout << "right" << endl;
             Segment segE = p_s[E];
-            //cout << "Size: " << SL.size() << endl;
             const Segment *segA = succ(SL, segE);
             const Segment *segB = pred(SL, segE);
-            cout << "right::segE " << segE;
             curr_x = keydict[make_pair(segE.p1, segE.p2)];
-            cout << "curr_x " << curr_x << endl;
-            //cout << "Size: " << SL.size() << endl;
-            //cout << "Index to be erased: " << segE.ind << endl;
-            //cout << "Value: " << segE.p1.x << " " << segE.p1.y << " " << segE.p2.x << " " << segE.p2.y << " " << segE.ind << endl;
-            if (SL.count(segE) == 0) {
-                //cout << "WTF count == 0" << endl;
-            }
             SL.erase(segE);
-            //cout << "Size: " << SL.size() << endl;
             curr_x = segE.p2.x;
-            cout << "curr_x " << curr_x << endl;
-            debug_sweep_line(SL);
             if (intersect(segA, segB)) {
-                cout << "intersectAB" << endl;
                 handle_intersect(segA, segB, SL, p_s, EQ);
                 if (destroy) return true;
             }
         } else if (orient == "intersect") {
-            cout << "intersect" << endl;
             curr_x = E.x;
-            cout << "curr_x " << curr_x << endl;
             Segment *s1 = E._s1;
-            cout << "intersect::s1 " << *s1;
             Segment *s2 = E._s2;
-            cout << "intersect::s2 " << *s2;
             handle_intersect_event(s1, s2, SL, p_s, EQ);
-            debug_sweep_line(SL);
         }
         EQ.pop();
     }
@@ -413,25 +341,5 @@ int main(int argc, char *argv[])
     };
     cout << shamos_hoey(segments) << endl;
     summary();
-
-    priority_queue<Point, vector<Point>, greater<Point>> q;
-    q.emplace(Point(2, 2));
-    q.emplace(Point(3, 2));
-    q.emplace(1, 4);
-    q.emplace(1, 5);
-    while (q.size() > 0) {
-        Point p = q.top();
-        q.pop();
-        cout << p.x << p.y << endl;
-    }
-
-    map<Point, Point> m;
-    m.emplace(Point(1, 1), Point(2, 2));
-    m.emplace(Point(2, 3), Point(3, 4));
-    m.emplace(Point(3, 4), Point(1, 1));
-    if (m[Point(1, 1)] == Point(2, 2)) {
-        cout << "SUCCESS" << endl;
-    }
-
     return 0;
 }
